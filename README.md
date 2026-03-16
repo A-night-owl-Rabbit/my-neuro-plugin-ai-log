@@ -2,12 +2,25 @@
 
 [my-neuro](https://github.com/A-night-owl-Rabbit/my-neuro) 的 AI 日志插件，让 AI 助手在用户说晚安时自动生成每日观察日志，并支持查看历史和生成月度总结。
 
+## 前置依赖
+
+> **必须配套安装 [核心记忆注入插件](https://github.com/A-night-owl-Rabbit/my-neuro-plugin-core-memory-injector)**
+
+AI 日志插件会将生成的每日日志和月度总结写入核心用户记忆文件。而核心记忆注入插件负责将该文件的内容持续注入到 AI 系统提示词中。两个插件配合使用，可以实现：
+
+- **AI 拥有长期记忆**：日志内容通过核心记忆注入到每次对话，AI 能回忆起之前发生的事
+- **人格连贯性**：月度总结帮助 AI 建立长期的用户画像和关系认知
+- **记忆不丢失**：即使对话上下文被压缩或重置，核心记忆中的日志仍然存在
+
+如果不安装核心记忆注入插件，日志仍会正常生成和保存到文件，但 AI 在后续对话中将无法自动回忆这些内容。
+
 ## 快速开始
 
-1. 将此插件文件夹放入 `plugins/built-in/ai-log/` 或 `plugins/community/ai-log/`
-2. 在 `plugins/enabled_plugins.json` 的 `plugins` 数组中添加 `"built-in/ai-log"`（或 `"community/ai-log"`）
-3. 在 `plugin_config.json` 中填写必要配置
-4. 重启程序即可
+1. 先安装 [核心记忆注入插件](https://github.com/A-night-owl-Rabbit/my-neuro-plugin-core-memory-injector)
+2. 将此插件文件夹放入 `plugins/built-in/ai-log/` 或 `plugins/community/ai-log/`
+3. 在 `plugins/enabled_plugins.json` 的 `plugins` 数组中添加 `"built-in/ai-log"`（或 `"community/ai-log"`）
+4. 在 `plugin_config.json` 中填写必要配置
+5. 重启程序即可
 
 ## 配置说明
 
@@ -43,8 +56,36 @@
 - **查看日志**：读取日志保存目录中最近 N 天的日志文件
 - **月度总结**：读取上个月所有日志文件，调用 LLM 生成月度总结并保存
 
+## 架构图
+
+```
+用户说晚安 ──▶ write_ai_diary 工具触发
+                    │
+                    ▼
+            读取对话历史文件
+                    │
+                    ▼
+          调用 LLM 生成日志内容
+                    │
+            ┌───────┴───────┐
+            ▼               ▼
+      保存日志文件     写入核心记忆文件
+      (日志目录)     (核心用户记忆.txt)
+                            │
+                            ▼
+              核心记忆注入插件（前置依赖）
+              在每次 LLM 请求时注入
+                            │
+                            ▼
+                AI 在后续对话中能回忆日志内容
+```
+
 ## 注意事项
 
 - 日志保存目录（`diary_folder`）为必填项，请确保路径存在或程序有权限创建
 - 如果不填 API 配置，插件会尝试使用主 LLM 的配置
 - 提示词（`daily_prompt` / `monthly_prompt`）决定了日志的风格和角色，请根据你的 AI 角色自行定制
+
+## 许可
+
+MIT
