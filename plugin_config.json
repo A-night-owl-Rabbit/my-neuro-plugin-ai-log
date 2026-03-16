@@ -47,6 +47,12 @@
     "type": "string",
     "default": "AI记录室/记忆库.txt"
   },
+  "history_backup_folder": {
+    "title": "记忆库备份目录",
+    "description": "写完日志后，将记忆库文件备份到此目录（绝对路径）。备份文件名为 记忆库-{日期}.txt，备份后清空原记忆库。留空则不备份。",
+    "type": "string",
+    "default": ""
+  },
   "daily_prompt": {
     "title": "每日日志提示词",
     "description": "生成每日 AI 日志时使用的系统提示词（请根据你的 AI 角色自行填写）",
