@@ -1,0 +1,10 @@
+{
+  "name": "ai-log",
+  "displayName": "AI 日志",
+  "version": "1.0.0",
+  "author": "LikeNightRabbit",
+  "description": "提供 AI 日志生成工具：当用户说晚安时生成每日观察报告、查看最近日志、生成月度总结",
+  "framework_version": ">=1.0.0",
+  "main": "index.js",
+  "lang": "js"
+}

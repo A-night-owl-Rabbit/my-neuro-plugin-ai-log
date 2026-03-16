@@ -1,0 +1,80 @@
+{
+  "api_url": {
+    "title": "API 地址",
+    "description": "用于生成日志的 LLM API 地址（留空则使用主 LLM）",
+    "type": "string",
+    "default": ""
+  },
+  "api_key": {
+    "title": "API Key",
+    "description": "LLM API 密钥（留空则使用主 LLM 的密钥）",
+    "type": "string",
+    "default": ""
+  },
+  "model": {
+    "title": "模型名称",
+    "description": "用于生成日志的模型（留空则使用主 LLM 的模型）",
+    "type": "string",
+    "default": ""
+  },
+  "diary_folder": {
+    "title": "日志保存目录",
+    "description": "AI 日志文件保存的绝对路径",
+    "type": "string",
+    "default": ""
+  },
+  "diary_filename_template": {
+    "title": "日志文件名模板",
+    "description": "每日日志的文件名模板，{date} 会被替换为日期（如 2026-03-16）",
+    "type": "string",
+    "default": "{date}AI日志.txt"
+  },
+  "monthly_filename_template": {
+    "title": "月度总结文件名模板",
+    "description": "月度总结的文件名模板，{month} 会被替换为年月（如 2026-03）",
+    "type": "string",
+    "default": "{month}-月度总结.txt"
+  },
+  "core_memory_file": {
+    "title": "核心记忆文件",
+    "description": "核心用户记忆文件路径（相对于程序根目录）",
+    "type": "string",
+    "default": "AI记录室/核心用户记忆.txt"
+  },
+  "conversation_history_file": {
+    "title": "对话历史文件",
+    "description": "对话历史（记忆库）文件路径（相对于程序根目录）",
+    "type": "string",
+    "default": "AI记录室/记忆库.txt"
+  },
+  "daily_prompt": {
+    "title": "每日日志提示词",
+    "description": "生成每日 AI 日志时使用的系统提示词（请根据你的 AI 角色自行填写）",
+    "type": "text",
+    "default": "请根据今天的对话历史，以 AI 助手的视角写一篇简短的每日观察日志。要求主观、有个性、有细节，字数控制在 400 字以内。"
+  },
+  "monthly_prompt": {
+    "title": "月度总结提示词",
+    "description": "生成月度总结时使用的系统提示词（请根据你的 AI 角色自行填写）",
+    "type": "text",
+    "default": "请根据这个月的所有 AI 日志，写一篇月度总结报告。要求有整体概括和精彩细节回顾，字数控制在 1000 字以内。"
+  },
+  "trigger_after_hour": {
+    "title": "日志触发时间（时）",
+    "description": "只有在每天几点之后才允许生成每日日志（24小时制，如 21 表示晚上9点）",
+    "type": "int",
+    "default": 21
+  },
+  "max_retries": {
+    "title": "API 最大重试次数",
+    "description": "调用 API 失败后的最大重试次数",
+    "type": "int",
+    "default": 3
+  },
+  "night_hour_start": {
+    "title": "夜间起始时间",
+    "description": "凌晨几点前算作前一天（0-7 之间的整数）",
+    "type": "int",
+    "default": 7
+  }
+}
