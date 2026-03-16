@@ -19,6 +19,7 @@ class AiLogPlugin extends Plugin {
         this._monthlyFilenameTemplate = cfg.monthly_filename_template || '{month}-月度总结.txt';
         this._coreMemoryPath = path.join(this._rootDir, cfg.core_memory_file || 'AI记录室/核心用户记忆.txt');
         this._conversationHistoryPath = path.join(this._rootDir, cfg.conversation_history_file || 'AI记录室/记忆库.txt');
+        this._historyBackupFolder = cfg.history_backup_folder || '';
         this._dailyPrompt = cfg.daily_prompt || '';
         this._monthlyPrompt = cfg.monthly_prompt || '';
         this._triggerAfterHour = cfg.trigger_after_hour ?? 21;
@@ -240,6 +241,37 @@ class AiLogPlugin extends Plugin {
         }
     }
 
+    _backupAndClearHistory(date) {
+        if (!this._historyBackupFolder) return;
+
+        try {
+            if (!fs.existsSync(this._conversationHistoryPath)) {
+                this.context.log('warn', '记忆库文件不存在，跳过备份');
+                return;
+            }
+
+            const content = fs.readFileSync(this._conversationHistoryPath, 'utf-8');
+            if (!content.trim()) {
+                this.context.log('info', '记忆库为空，跳过备份');
+                return;
+            }
+
+            if (!fs.existsSync(this._historyBackupFolder)) {
+                fs.mkdirSync(this._historyBackupFolder, { recursive: true });
+            }
+
+            const backupFilename = `记忆库-${date}.txt`;
+            const backupPath = path.join(this._historyBackupFolder, backupFilename);
+            fs.writeFileSync(backupPath, content, 'utf-8');
+            this.context.log('info', `记忆库已备份: ${backupPath}`);
+
+            fs.writeFileSync(this._conversationHistoryPath, '', 'utf-8');
+            this.context.log('info', '记忆库已清空，准备记录新一天的内容');
+        } catch (error) {
+            this.context.log('error', `记忆库备份失败: ${error.message}`);
+        }
+    }
+
     // ===== 核心功能 =====
 
     _isInTriggerWindow() {
@@ -276,6 +308,8 @@ class AiLogPlugin extends Plugin {
         const savedPath = this._saveDiaryFile(filename, diaryContent);
         const entryKey = filename.replace('.txt', '');
         this._updateCoreMemory(entryKey, diaryContent);
+
+        this._backupAndClearHistory(date);
 
         this.context.log('info', 'AI 日志生成完成');
         return `AI日志已生成并保存：${savedPath}\n\n${diaryContent}`;
