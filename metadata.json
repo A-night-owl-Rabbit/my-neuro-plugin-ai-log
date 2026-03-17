@@ -1,9 +1,9 @@
 {
   "name": "ai-log",
-  "displayName": "AI 日志",
+  "displayName": "思痕之册",
   "version": "1.0.0",
   "author": "LikeNightRabbit",
-  "description": "提供 AI 日志生成工具：当用户说晚安时生成每日观察报告、查看最近日志、生成月度总结",
+  "description": "每一天的对话都值得铭记 —— 夜幕降临时自动凝结当日思绪为观察日志，汇聚月光编织月度回忆录，让 AI 的记忆跨越每一次重启",
   "framework_version": ">=1.0.0",
   "main": "index.js",
   "lang": "js"
