@@ -14,7 +14,7 @@ class AiLogPlugin extends Plugin {
         this._apiUrl = cfg.api_url || '';
         this._apiKey = cfg.api_key || '';
         this._model = cfg.model || '';
-        this._diaryFolder = cfg.diary_folder || '';
+        this._diaryFolder = cfg.diary_folder || 'C:\\AI日志';
         this._diaryFilenameTemplate = cfg.diary_filename_template || '{date}AI日志.txt';
         this._monthlyFilenameTemplate = cfg.monthly_filename_template || '{month}-月度总结.txt';
         this._coreMemoryPath = path.join(this._rootDir, cfg.core_memory_file || 'AI记录室/核心用户记忆.txt');
@@ -39,10 +39,15 @@ class AiLogPlugin extends Plugin {
                 type: 'function',
                 function: {
                     name: 'write_ai_diary',
-                    description: `当用户说晚安、睡觉等表示要去睡觉的话时，且当前时间在晚上${this._triggerAfterHour}点之后（或凌晨${this._nightHourStart}点之前），调用此工具生成今天的AI日志。这个工具会总结今天的对话历史，生成一份AI视角的观察报告。`,
+                    description: `生成今天的AI日志，总结当天对话历史并保存为观察报告，同时写入核心记忆。以下情况必须调用此工具：1) 用户明确要求写AI日志/生成日志/记录日志时（传入 force=true）；2) 用户表达睡意（说晚安、睡觉等）且当前在晚上${this._triggerAfterHour}点至凌晨${this._nightHourStart}点之间时（传入 force=false）。注意：不要尝试用其他工具代替此工具的功能。`,
                     parameters: {
                         type: 'object',
-                        properties: {},
+                        properties: {
+                            force: {
+                                type: 'boolean',
+                                description: '是否强制执行（跳过时间窗口限制）。用户明确要求写日志时传 true，晚安自动触发时传 false 或不传'
+                            }
+                        },
                         required: []
                     }
                 }
@@ -68,7 +73,7 @@ class AiLogPlugin extends Plugin {
                 type: 'function',
                 function: {
                     name: 'write_monthly_summary',
-                    description: '每月1号调用此工具生成上个月的月度总结。这个工具会读取上个月的所有AI日志，生成一份月度观察报告。',
+                    description: '每月1号调用此工具生成上个月的月度总结。这个工具会读取上个月的所有AI日志，生成一份角色视角的月度观察报告。',
                     parameters: {
                         type: 'object',
                         properties: {},
@@ -84,7 +89,7 @@ class AiLogPlugin extends Plugin {
 
         switch (name) {
             case 'write_ai_diary':
-                return await this._writeDiary();
+                return await this._writeDiary(params.force || false);
             case 'read_recent_diary':
                 return this._readRecentDiary(params.days || 3);
             case 'write_monthly_summary':
@@ -246,6 +251,59 @@ class AiLogPlugin extends Plugin {
         }
     }
 
+    /**
+     * 裁剪核心记忆中的日志：每日日志只保留最近一天，月度总结只保留最近一个月
+     * 今天保留昨天，昨天没有则保留前天，以此类推
+     */
+    _pruneCoreMemoryLogs() {
+        try {
+            if (!fs.existsSync(this._coreMemoryPath)) return;
+
+            const raw = fs.readFileSync(this._coreMemoryPath, 'utf-8');
+            const chunks = raw.split(/(?=\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\])/).filter(Boolean);
+
+            const dailyEntries = [];  // { key, date, fullText }
+            const monthlyEntries = []; // { key, yearMonth, fullText }
+            const otherEntries = [];   // 非本插件添加的条目
+
+            for (const chunk of chunks) {
+                const m = chunk.match(/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] ([^：]+)：([\s\S]*)$/);
+                if (!m) { otherEntries.push(chunk); continue; }
+
+                const [, timestamp, key] = m;
+                const fullText = chunk.replace(/\n+$/, '');
+
+                const dailyDate = key.match(/^(\d{4}-\d{2}-\d{2})/);
+                const monthlyYm = key.match(/^(\d{4}-\d{2})-[^\d]/);
+
+                if (dailyDate) {
+                    dailyEntries.push({ key, date: dailyDate[1], fullText });
+                } else if (monthlyYm) {
+                    monthlyEntries.push({ key, yearMonth: monthlyYm[1], fullText });
+                } else {
+                    otherEntries.push(chunk);
+                }
+            }
+
+            dailyEntries.sort((a, b) => b.date.localeCompare(a.date));
+            monthlyEntries.sort((a, b) => b.yearMonth.localeCompare(a.yearMonth));
+
+            const keepDaily = dailyEntries[0] ? [dailyEntries[0].fullText] : [];
+            const keepMonthly = monthlyEntries[0] ? [monthlyEntries[0].fullText] : [];
+
+            const pruned = [...otherEntries, ...keepDaily, ...keepMonthly].join('\n\n');
+            if (pruned !== raw) {
+                fs.writeFileSync(this._coreMemoryPath, pruned, 'utf-8');
+                const removed = dailyEntries.length + monthlyEntries.length - keepDaily.length - keepMonthly.length;
+                if (removed > 0) {
+                    this.context.log('info', `核心记忆已裁剪：保留最近1天日志、最近1月总结，移除 ${removed} 条旧记录`);
+                }
+            }
+        } catch (error) {
+            this.context.log('error', `核心记忆裁剪失败: ${error.message}`);
+        }
+    }
+
     _backupAndClearHistory(date) {
         if (!this._historyBackupFolder) return;
 
@@ -284,9 +342,9 @@ class AiLogPlugin extends Plugin {
         return hour >= this._triggerAfterHour || hour < this._nightHourStart;
     }
 
-    async _writeDiary() {
-        if (!this._isInTriggerWindow()) {
-            return `现在还不到写日志的时间哦，晚上${this._triggerAfterHour}点以后再来吧！`;
+    async _writeDiary(force = false) {
+        if (!force && !this._isInTriggerWindow()) {
+            return `现在还不到写日志的时间哦，晚上${this._triggerAfterHour}点以后再来吧！如果你确实想现在写，可以明确告诉我"强制写AI日志"。`;
         }
 
         this.context.log('info', '开始生成 AI 日志...');
@@ -309,6 +367,7 @@ class AiLogPlugin extends Plugin {
         const savedPath = this._saveDiaryFile(filename, diaryContent);
         const entryKey = filename.replace('.txt', '');
         this._updateCoreMemory(entryKey, diaryContent);
+        this._pruneCoreMemoryLogs();
 
         this._backupAndClearHistory(date);
 
@@ -358,6 +417,7 @@ class AiLogPlugin extends Plugin {
         const savedPath = this._saveDiaryFile(filename, summaryContent);
         const entryKey = filename.replace('.txt', '');
         this._updateCoreMemory(entryKey, summaryContent);
+        this._pruneCoreMemoryLogs();
 
         this.context.log('info', '月度总结生成完成');
         return `${lastMonth} 月度总结已生成并保存：${savedPath}\n\n${summaryContent}`;
