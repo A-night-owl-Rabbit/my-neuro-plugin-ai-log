@@ -28,10 +28,6 @@ class AiLogPlugin extends Plugin {
     }
 
     async onStart() {
-        if (!this._diaryFolder) {
-            this.context.log('warn', 'AI 日志插件：未配置日志保存目录 (diary_folder)，请在 plugin_config.json 中设置');
-            return;
-        }
         this.context.log('info', `AI 日志插件已启动 | 日志目录: ${this._diaryFolder}`);
     }
 
@@ -40,35 +36,44 @@ class AiLogPlugin extends Plugin {
     getTools() {
         return [
             {
-                name: 'write_ai_diary',
-                description: `当用户说晚安、睡觉等表示要去睡觉的话时，且当前时间在晚上${this._triggerAfterHour}点之后（或凌晨${this._nightHourStart}点之前），调用此工具生成今天的AI日志。这个工具会总结今天的对话历史，生成一份AI视角的观察报告。`,
-                parameters: {
-                    type: 'object',
-                    properties: {},
-                    required: []
+                type: 'function',
+                function: {
+                    name: 'write_ai_diary',
+                    description: `当用户说晚安、睡觉等表示要去睡觉的话时，且当前时间在晚上${this._triggerAfterHour}点之后（或凌晨${this._nightHourStart}点之前），调用此工具生成今天的AI日志。这个工具会总结今天的对话历史，生成一份AI视角的观察报告。`,
+                    parameters: {
+                        type: 'object',
+                        properties: {},
+                        required: []
+                    }
                 }
             },
             {
-                name: 'read_recent_diary',
-                description: '查看最近几天的AI日志内容，帮助回顾最近发生的事情',
-                parameters: {
-                    type: 'object',
-                    properties: {
-                        days: {
-                            type: 'number',
-                            description: '要查看最近几天的日志，默认为3天'
-                        }
-                    },
-                    required: []
+                type: 'function',
+                function: {
+                    name: 'read_recent_diary',
+                    description: '查看最近几天的AI日志内容，帮助回顾最近发生的事情',
+                    parameters: {
+                        type: 'object',
+                        properties: {
+                            days: {
+                                type: 'number',
+                                description: '要查看最近几天的日志，默认为3天'
+                            }
+                        },
+                        required: []
+                    }
                 }
             },
             {
-                name: 'write_monthly_summary',
-                description: '每月1号调用此工具生成上个月的月度总结。这个工具会读取上个月的所有AI日志，生成一份月度观察报告。',
-                parameters: {
-                    type: 'object',
-                    properties: {},
-                    required: []
+                type: 'function',
+                function: {
+                    name: 'write_monthly_summary',
+                    description: '每月1号调用此工具生成上个月的月度总结。这个工具会读取上个月的所有AI日志，生成一份月度观察报告。',
+                    parameters: {
+                        type: 'object',
+                        properties: {},
+                        required: []
+                    }
                 }
             }
         ];
@@ -280,10 +285,6 @@ class AiLogPlugin extends Plugin {
     }
 
     async _writeDiary() {
-        if (!this._diaryFolder) {
-            return '请先在 plugin_config.json 中配置 diary_folder（日志保存目录）';
-        }
-
         if (!this._isInTriggerWindow()) {
             return `现在还不到写日志的时间哦，晚上${this._triggerAfterHour}点以后再来吧！`;
         }
@@ -337,10 +338,6 @@ class AiLogPlugin extends Plugin {
     }
 
     async _writeMonthlySummary() {
-        if (!this._diaryFolder) {
-            return '请先在 plugin_config.json 中配置 diary_folder（日志保存目录）';
-        }
-
         this.context.log('info', '开始生成月度总结...');
 
         const lastMonth = this._getLastMonth();
