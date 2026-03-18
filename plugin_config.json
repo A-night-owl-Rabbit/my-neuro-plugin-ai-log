@@ -3,7 +3,7 @@
     "title": "API 地址",
     "description": "用于生成日志的 LLM API 地址（留空则使用主 LLM）",
     "type": "string",
-    "default": ""
+    "default": "https://api.siliconflow.cn/v1/chat/completions"
   },
   "api_key": {
     "title": "API Key",
@@ -15,13 +15,13 @@
     "title": "模型名称",
     "description": "用于生成日志的模型（留空则使用主 LLM 的模型）",
     "type": "string",
-    "default": ""
+    "default": "deepseek-ai/DeepSeek-V3.2"
   },
   "diary_folder": {
     "title": "日志保存目录",
     "description": "AI 日志文件保存的绝对路径",
     "type": "string",
-    "default": ""
+    "default": "C:\\AI日志"
   },
   "diary_filename_template": {
     "title": "日志文件名模板",
@@ -51,19 +51,19 @@
     "title": "记忆库备份目录",
     "description": "写完日志后，将记忆库文件备份到此目录（绝对路径）。备份文件名为 记忆库-{日期}.txt，备份后清空原记忆库。留空则不备份。",
     "type": "string",
-    "default": ""
+    "default": "C:\\AI日志\\记忆库备份"
   },
   "daily_prompt": {
     "title": "每日日志提示词",
-    "description": "生成每日 AI 日志时使用的系统提示词（请根据你的 AI 角色自行填写）",
+    "description": "生成每日 AI 日志时使用的系统提示词",
     "type": "text",
-    "default": "请根据今天的对话历史，以 AI 助手的视角写一篇简短的每日观察日志。要求主观、有个性、有细节，字数控制在 400 字以内。"
+    "default": "请根据对话历史生成一份角色化的观察日志。提示词在 plugin_config.json 中按你的 AI 角色自行配置。"
   },
   "monthly_prompt": {
     "title": "月度总结提示词",
-    "description": "生成月度总结时使用的系统提示词（请根据你的 AI 角色自行填写）",
+    "description": "生成月度总结时使用的系统提示词",
     "type": "text",
-    "default": "请根据这个月的所有 AI 日志，写一篇月度总结报告。要求有整体概括和精彩细节回顾，字数控制在 1000 字以内。"
+    "default": "请根据本月所有日志生成角色化的月度总结。提示词在 plugin_config.json 中按你的 AI 角色自行配置。"
   },
   "trigger_after_hour": {
     "title": "日志触发时间（时）",
