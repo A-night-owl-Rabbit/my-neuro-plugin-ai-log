@@ -17,9 +17,21 @@
     "type": "string",
     "default": "deepseek-ai/DeepSeek-V3.2"
   },
+  "thinking_mode": {
+    "title": "思考模式",
+    "description": "部分模型（如 DeepSeek V4）支持：enabled 开启，disabled 关闭；不支持的模型可忽略",
+    "type": "string",
+    "default": "enabled"
+  },
+  "reasoning_effort": {
+    "title": "思考强度",
+    "description": "部分模型支持：high 或 max；不支持的模型可忽略",
+    "type": "string",
+    "default": "max"
+  },
   "diary_folder": {
     "title": "日志保存目录",
-    "description": "AI 日志文件保存的绝对路径",
+    "description": "AI 日志文件保存的绝对路径（必填）",
     "type": "string",
     "default": "C:\\AI日志"
   },
@@ -49,21 +61,21 @@
   },
   "history_backup_folder": {
     "title": "记忆库备份目录",
-    "description": "写完日志后，将记忆库文件备份到此目录（绝对路径）。备份文件名为 记忆库-{日期}.txt，备份后清空原记忆库。留空则不备份。",
+    "description": "写完日志后，将记忆库文件备份到此目录（绝对路径）。备份后清空原记忆库。留空则不备份。",
     "type": "string",
     "default": "C:\\AI日志\\记忆库备份"
   },
   "daily_prompt": {
     "title": "每日日志提示词",
-    "description": "生成每日 AI 日志时使用的系统提示词",
+    "description": "生成每日 AI 日志时使用的系统提示词，请按你的角色与人格自行撰写（本仓库示例不包含具体人设）",
     "type": "text",
-    "default": "请根据对话历史生成一份角色化的观察日志。提示词在 plugin_config.json 中按你的 AI 角色自行配置。"
+    "default": "请根据对话历史，以你设定的角色口吻撰写一篇分板块的「观察日志」。要求：连贯段落、不使用 Markdown 列表符号；结尾有简短总结。"
   },
   "monthly_prompt": {
     "title": "月度总结提示词",
-    "description": "生成月度总结时使用的系统提示词",
+    "description": "生成月度总结时使用的系统提示词，请按你的角色与人格自行撰写",
     "type": "text",
-    "default": "请根据本月所有日志生成角色化的月度总结。提示词在 plugin_config.json 中按你的 AI 角色自行配置。"
+    "default": "请根据本月所有每日日志，以你设定的角色口吻撰写月度回顾。要求：连贯段落、体现时间跨度；结尾有整体收束。"
   },
   "trigger_after_hour": {
     "title": "日志触发时间（时）",
