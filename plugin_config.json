@@ -31,9 +31,9 @@
   },
   "diary_folder": {
     "title": "日志保存目录",
-    "description": "AI 日志文件保存的绝对路径（必填）",
+    "description": "AI 日志保存目录。留空则使用程序根目录下的「AI日志」文件夹（由插件自动创建）；也可填写绝对路径。",
     "type": "string",
-    "default": "C:\\AI日志"
+    "default": ""
   },
   "diary_filename_template": {
     "title": "日志文件名模板",
@@ -61,9 +61,9 @@
   },
   "history_backup_folder": {
     "title": "记忆库备份目录",
-    "description": "写完日志后，将记忆库文件备份到此目录（绝对路径）。备份后清空原记忆库。留空则不备份。",
+    "description": "写完日志后，将记忆库文件备份到此目录（建议绝对路径）。备份后清空原记忆库。留空则不备份。",
     "type": "string",
-    "default": "C:\\AI日志\\记忆库备份"
+    "default": ""
   },
   "daily_prompt": {
     "title": "每日日志提示词",
