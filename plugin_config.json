@@ -49,13 +49,13 @@
   },
   "core_memory_file": {
     "title": "核心记忆文件",
-    "description": "核心用户记忆文件路径（相对于程序根目录）",
+    "description": "核心用户记忆文件路径。支持绝对路径（如 D:\\AI记忆\\核心用户记忆.txt）或相对于程序根目录的路径（如 AI记录室/核心用户记忆.txt）",
     "type": "string",
     "default": "AI记录室/核心用户记忆.txt"
   },
   "conversation_history_file": {
     "title": "对话历史文件",
-    "description": "对话历史（记忆库）文件路径（相对于程序根目录）",
+    "description": "对话历史（记忆库）文件路径。支持绝对路径（如 D:\\AI记忆\\记忆库.txt）或相对于程序根目录的路径（如 AI记录室/记忆库.txt）。该文件由主程序写入，本插件读取并在生成日志后按配置备份并清空",
     "type": "string",
     "default": "AI记录室/记忆库.txt"
   },

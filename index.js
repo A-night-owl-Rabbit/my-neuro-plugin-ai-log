@@ -19,8 +19,13 @@ class AiLogPlugin extends Plugin {
         this._diaryFolder = cfg.diary_folder || path.join(this._rootDir, 'AI日志');
         this._diaryFilenameTemplate = cfg.diary_filename_template || '{date}AI日志.txt';
         this._monthlyFilenameTemplate = cfg.monthly_filename_template || '{month}-月度总结.txt';
-        this._coreMemoryPath = path.join(this._rootDir, cfg.core_memory_file || 'AI记录室/核心用户记忆.txt');
-        this._conversationHistoryPath = path.join(this._rootDir, cfg.conversation_history_file || 'AI记录室/记忆库.txt');
+        const resolvePath = (filePath, defaultPath) => {
+            const value = (filePath && String(filePath).trim()) || defaultPath;
+            return path.isAbsolute(value) ? path.normalize(value) : path.join(this._rootDir, value);
+        };
+
+        this._coreMemoryPath = resolvePath(cfg.core_memory_file, 'AI记录室/核心用户记忆.txt');
+        this._conversationHistoryPath = resolvePath(cfg.conversation_history_file, 'AI记录室/记忆库.txt');
         this._historyBackupFolder = cfg.history_backup_folder || '';
         this._dailyPrompt = cfg.daily_prompt || '';
         this._monthlyPrompt = cfg.monthly_prompt || '';
