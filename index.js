@@ -11,14 +11,14 @@ class AiLogPlugin extends Plugin {
         const cfg = this.context.getPluginFileConfig();
         this._rootDir = path.join(__dirname, '..', '..', '..');
 
+        this._providerId = cfg.llm_provider || '';
+        this._providerModel = cfg.llm_model || '';
         this._apiUrl = cfg.api_url || '';
         this._apiKey = cfg.api_key || '';
         this._model = cfg.model || '';
-        this._thinkingMode = cfg.thinking_mode || 'enabled';
-        this._reasoningEffort = cfg.reasoning_effort || 'max';
-        this._diaryFolder = cfg.diary_folder || path.join(this._rootDir, 'AI日志');
-        this._diaryFilenameTemplate = cfg.diary_filename_template || '{date}AI日志.txt';
-        this._monthlyFilenameTemplate = cfg.monthly_filename_template || '{month}-月度总结.txt';
+        this._diaryFolder = cfg.diary_folder || 'K:\\AI日志';
+        this._diaryFilenameTemplate = cfg.diary_filename_template || '{date}肥牛的AI日志.txt';
+        this._monthlyFilenameTemplate = cfg.monthly_filename_template || '{month}-肥牛月度总结.txt';
         const resolvePath = (filePath, defaultPath) => {
             const value = (filePath && String(filePath).trim()) || defaultPath;
             return path.isAbsolute(value) ? path.normalize(value) : path.join(this._rootDir, value);
@@ -85,7 +85,7 @@ class AiLogPlugin extends Plugin {
                 type: 'function',
                 function: {
                     name: 'write_monthly_summary',
-                    description: '每月1号调用此工具生成上个月的月度总结。这个工具会读取上个月的所有AI日志，生成一份符合角色设定的月度观察报告。',
+                    description: '每月1号调用此工具生成上个月的月度总结。这个工具会读取上个月的所有AI日志，生成一份肥牛视角的月度观察报告。',
                     parameters: {
                         type: 'object',
                         properties: {},
@@ -141,55 +141,33 @@ class AiLogPlugin extends Plugin {
     // ===== API 调用 =====
 
     async _callAPI(systemPrompt, userContent) {
-        const apiUrl = this._apiUrl || global.voiceChat?.API_URL + '/chat/completions';
-        const apiKey = this._apiKey || global.voiceChat?.API_KEY;
-        const model = this._model || global.voiceChat?.MODEL;
-
-        if (!apiUrl || !apiKey) {
-            throw new Error('API 配置缺失，请在 plugin_config.json 中配置或确保主 LLM 可用');
-        }
+        const providerId = String(this._providerId || '').trim();
+        const legacyReady = !providerId && this._apiUrl && this._apiKey;
+        const selectedModel = providerId
+            ? String(this._providerModel || '').trim()
+            : (legacyReady ? String(this._model || '').trim() : '');
+        const modelLabel = selectedModel || global.voiceChat?.MODEL || '全局模型';
 
         for (let attempt = 1; attempt <= this._maxRetries; attempt++) {
             try {
-                const requestBody = {
-                    model,
+                this.context.log('info', `调用 API 第 ${attempt} 次... | 模型: ${modelLabel}`);
+                const content = await this.context.callLLM('', {
+                    provider_id: providerId || undefined,
+                    model: selectedModel || undefined,
+                    api_url: legacyReady ? this._apiUrl : undefined,
+                    api_key: legacyReady ? this._apiKey : undefined,
                     messages: [
                         { role: 'system', content: systemPrompt },
                         { role: 'user', content: userContent }
                     ],
                     max_tokens: 8000,
                     temperature: 0.7
-                };
-
-                const thinkingMode = String(this._thinkingMode || '').toLowerCase();
-                if (thinkingMode === 'enabled' || thinkingMode === 'disabled') {
-                    requestBody.thinking = { type: thinkingMode };
-                }
-                if (this._reasoningEffort) {
-                    requestBody.reasoning_effort = this._reasoningEffort;
-                }
-
-                this.context.log('info', `调用 API 第 ${attempt} 次... | 模型: ${model} | thinking: ${thinkingMode || 'default'} | reasoning_effort: ${this._reasoningEffort || 'default'}`);
-
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${apiKey}`
-                    },
-                    body: JSON.stringify(requestBody)
                 });
-
-                const data = await response.json();
-
-                if (data.choices?.[0]?.message) {
+                if (content) {
                     this.context.log('info', 'API 调用成功');
-                    return data.choices[0].message.content;
+                    return content;
                 }
-                if (data.error) {
-                    throw new Error(`API 错误: ${data.error.message || JSON.stringify(data.error)}`);
-                }
-                throw new Error('API 响应格式异常');
+                throw new Error('API 返回空内容');
             } catch (error) {
                 this.context.log('error', `第 ${attempt} 次尝试失败: ${error.message}`);
                 if (attempt === this._maxRetries) throw error;
@@ -247,25 +225,56 @@ class AiLogPlugin extends Plugin {
         return filePath;
     }
 
+    _splitCoreMemoryEntries(raw) {
+        const normalized = String(raw || '').replace(/\r\n?/g, '\n');
+        return normalized
+            .split(/(?=^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] )/m)
+            .map(chunk => chunk
+                .replace(/^(?:[ \t]*\n)+/, '')
+                .replace(/(?:\n[ \t]*)+$/, ''))
+            .filter(chunk => chunk.trim());
+    }
+
+    _serializeCoreMemoryEntries(entries) {
+        const cleanedEntries = entries
+            .map(entry => String(entry)
+                .replace(/\r\n?/g, '\n')
+                .replace(/(?:\n[ \t]*)+$/, ''))
+            .filter(entry => entry.trim());
+
+        return cleanedEntries.length > 0
+            ? `${cleanedEntries.join('\n')}\n`
+            : '';
+    }
+
     _updateCoreMemory(entryKey, content) {
         try {
             const timestamp = this._getTimestamp();
-            const newEntry = `[${timestamp}] ${entryKey}：${content}\n`;
+            const normalizedContent = String(content || '')
+                .replace(/\r\n?/g, '\n')
+                .replace(/^(?:[ \t]*\n)+/, '')
+                .replace(/(?:\n[ \t]*)+$/, '');
+            const newEntry = `[${timestamp}] ${entryKey}：${normalizedContent}`;
 
             let existing = '';
             if (fs.existsSync(this._coreMemoryPath)) {
                 existing = fs.readFileSync(this._coreMemoryPath, 'utf-8');
             }
 
+            const entries = this._splitCoreMemoryEntries(existing);
             const escapedKey = entryKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const pattern = new RegExp(
-                `\\[\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\] ${escapedKey}[\\s\\S]*?(?=\\[\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\]|$)`
+                `^\\[\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\] ${escapedKey}：`
             );
+            const existingIndex = entries.findIndex(entry => pattern.test(entry));
 
-            const final = pattern.test(existing)
-                ? existing.replace(pattern, newEntry)
-                : existing + newEntry;
+            if (existingIndex >= 0) {
+                entries[existingIndex] = newEntry;
+            } else {
+                entries.push(newEntry);
+            }
 
+            const final = this._serializeCoreMemoryEntries(entries);
             fs.writeFileSync(this._coreMemoryPath, final, 'utf-8');
             this.context.log('info', `核心记忆已更新: ${entryKey}`);
         } catch (error) {
@@ -282,7 +291,7 @@ class AiLogPlugin extends Plugin {
             if (!fs.existsSync(this._coreMemoryPath)) return;
 
             const raw = fs.readFileSync(this._coreMemoryPath, 'utf-8');
-            const chunks = raw.split(/(?=\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\])/).filter(Boolean);
+            const chunks = this._splitCoreMemoryEntries(raw);
 
             const dailyEntries = [];  // { key, date, fullText }
             const monthlyEntries = []; // { key, yearMonth, fullText }
@@ -293,7 +302,7 @@ class AiLogPlugin extends Plugin {
                 if (!m) { otherEntries.push(chunk); continue; }
 
                 const [, timestamp, key] = m;
-                const fullText = chunk.replace(/\n+$/, '');
+                const fullText = chunk;
 
                 const dailyDate = key.match(/^(\d{4}-\d{2}-\d{2})/);
                 const monthlyYm = key.match(/^(\d{4}-\d{2})-[^\d]/);
@@ -313,7 +322,11 @@ class AiLogPlugin extends Plugin {
             const keepDaily = dailyEntries[0] ? [dailyEntries[0].fullText] : [];
             const keepMonthly = monthlyEntries[0] ? [monthlyEntries[0].fullText] : [];
 
-            const pruned = [...otherEntries, ...keepDaily, ...keepMonthly].join('\n\n');
+            const pruned = this._serializeCoreMemoryEntries([
+                ...otherEntries,
+                ...keepDaily,
+                ...keepMonthly
+            ]);
             if (pruned !== raw) {
                 fs.writeFileSync(this._coreMemoryPath, pruned, 'utf-8');
                 const removed = dailyEntries.length + monthlyEntries.length - keepDaily.length - keepMonthly.length;
@@ -465,12 +478,12 @@ class AiLogPlugin extends Plugin {
 【⚠️ 合并模式 - 此节优先级最高，覆盖前面的所有规则 ⚠️】
 
 你正在更新今天的AI日志。用户会同时提供两份输入：
-  A. "今天已经写过的旧日志"——这是你先前已经写好的"观察报告"。
+  A. "今天已经写过的旧日志"——这是你（肥牛）之前已经亲手写好的"观察报告"。
   B. "在那之后新发生的事件清单"——一份客观的事件列表。
 
 你的任务是【合并】，不是【重写】：
   1. 旧日志中的所有板块、所有事件、所有细节，必须 100% 保留在你的输出中。可以润色措辞，但不能删除任何旧事件。
-  2. 把【事件清单 B】中的内容，作为【新增板块】或【追加段落】融入日志，保持与既有日志一致的角色语气与"观察报告"风格。
+  2. 把【事件清单 B】中的内容，作为【新增板块】或【追加段落】融入日志，保持肥牛的语气和"观察报告"风格。
   3. "总而言之"放到最末尾，用一句话同时回应今天前后两段经历。
   4. 字数限制从 400 字放宽到 800 字以内（合并后内容更丰富）。
   5. 不要写"早些时候已经写过日志"之类的元叙述，输出的就是一篇自然的、涵盖今天所有事的完整日记。
